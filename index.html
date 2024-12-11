@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XML Tool</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .copy-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+        }
+        .textarea-container {
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6 text-center">XML Tool</h1>
+        
+        <div class="space-y-6">
+            <!-- Mode Buttons -->
+            <div class="flex flex-wrap gap-4">
+                <button onclick="setMode('escape')" class="mode-btn w-32 px-4 py-2 rounded-md" data-mode="escape">Escape</button>
+                <button onclick="setMode('unescape')" class="mode-btn w-32 px-4 py-2 rounded-md" data-mode="unescape">Unescape</button>
+                <button onclick="setMode('prettify')" class="mode-btn w-32 px-4 py-2 rounded-md" data-mode="prettify">Prettify</button>
+                <button onclick="setMode('minify')" class="mode-btn w-32 px-4 py-2 rounded-md" data-mode="minify">Minify</button>
+            </div>
+
+            <!-- Input Section -->
+            <div class="space-y-2">
+                <label class="block text-sm font-medium">Input:</label>
+                <div class="textarea-container">
+                    <textarea id="input" class="w-full h-32 p-2 border rounded-md font-mono" placeholder="Enter XML..."></textarea>
+                    <button onclick="copyText('input')" class="copy-button p-2 rounded-md hover:bg-gray-100">
+                        📋
+                    </button>
+                </div>
+            </div>
+
+            <!-- Process Button -->
+            <button onclick="processXML()" class="w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600" id="processButton">
+                Process XML
+            </button>
+
+            <!-- Output Section -->
+            <div class="space-y-2">
+                <label class="block text-sm font-medium">Output:</label>
+                <div class="textarea-container">
+                    <textarea id="output" class="w-full h-32 p-2 border rounded-md font-mono" readonly></textarea>
+                    <button onclick="copyText('output')" class="copy-button p-2 rounded-md hover:bg-gray-100">
+                        📋
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'escape';
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('bg-blue-500', 'text-white');
+                    btn.classList.remove('bg-gray-200', 'text-gray-700');
+                } else {
+                    btn.classList.remove('bg-blue-500', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                }
+            });
+            updateButtonText();
+            updatePlaceholder();
+        }
+
+        function updateButtonText() {
+            const button = document.getElementById('processButton');
+            button.textContent = {
+                'escape': 'Escape XML',
+                'unescape': 'Unescape XML',
+                'prettify': 'Prettify XML',
+                'minify': 'Minify XML'
+            }[currentMode];
+        }
+
+        function updatePlaceholder() {
+            const input = document.getElementById('input');
+            input.placeholder = {
+                'escape': 'Enter XML to escape',
+                'unescape': 'Enter escaped XML to unescape',
+                'prettify': 'Enter XML to format',
+                'minify': 'Enter XML to minify'
+            }[currentMode];
+        }
+
+        async function copyText(elementId) {
+            const element = document.getElementById(elementId);
+            try {
+                await navigator.clipboard.writeText(element.value);
+            } catch (err) {
+                console.error('Failed to copy text:', err);
+            }
+        }
+
+        function escapeXML(text) {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function unescapeXML(text) {
+            return text
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"')
+                .replace(/&apos;/g, "'");
+        }
+
+        function prettifyXML(text) {
+            try {
+                let formatted = '';
+                let indent = 0;
+                
+                // Remove existing whitespace between tags
+                text = text.replace(/>\s+</g, '><');
+                
+                // Add newlines and indentation
+                text.split(/</).forEach((node, index) => {
+                    if (!node) return;
+
+                    // Check if this is a closing tag
+                    if (node.startsWith('/')) {
+                        indent--;
+                    }
+
+                    // Add formatted node
+                    if (index > 0) {
+                        formatted += '\n' + '  '.repeat(Math.max(0, indent)) + '<' + node;
+                    } else {
+                        formatted += node;
+                    }
+
+                    // Check if this is a self-closing tag
+                    if (!node.endsWith('/>') && !node.startsWith('/')) {
+                        indent++;
+                    }
+                });
+
+                return formatted;
+            } catch (error) {
+                return 'Error: Invalid XML';
+            }
+        }
+
+        function minifyXML(text) {
+            try {
+                return text
+                    .replace(/>\s+</g, '><')
+                    .replace(/\s+/g, ' ')
+                    .replace(/\s+</g, '<')
+                    .replace(/>\s+/g, '>')
+                    .trim();
+            } catch (error) {
+                return 'Error: Invalid XML';
+            }
+        }
+
+        function processXML() {
+            const input = document.getElementById('input').value;
+            const output = document.getElementById('output');
+            
+            let result;
+            switch (currentMode) {
+                case 'escape':
+                    result = escapeXML(input);
+                    break;
+                case 'unescape':
+                    result = unescapeXML(input);
+                    break;
+                case 'prettify':
+                    result = prettifyXML(input);
+                    break;
+                case 'minify':
+                    result = minifyXML(input);
+                    break;
+                default:
+                    result = input;
+            }
+            
+            output.value = result;
+        }
+
+        // Initialize the UI
+        setMode('escape');
+    </script>
+</body>
+</html>
